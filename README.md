@@ -18,8 +18,7 @@ A [pi](https://github.com/mariozechner/pi) extension that adds Claude models via
 ## Install
 
 ```bash
-cd ~/.pi/agent/extensions/claude-vertex
-npm install
+pi install git:github.com/JGrubb/pi-extension-claude-vertex
 ```
 
 Then run pi normally and select a model under the **claude-vertex** provider via `/model`.
