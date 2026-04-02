@@ -1,0 +1,24 @@
+{
+  "name": "pi-extension-claude-vertex",
+  "version": "1.0.0",
+  "description": "Claude on Vertex AI provider extension for pi — use Claude models via GCP ADC, no API key required",
+  "type": "module",
+  "scripts": {
+    "clean": "echo 'nothing to clean'",
+    "build": "echo 'nothing to build'",
+    "check": "echo 'nothing to check'"
+  },
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.52.0",
+    "@anthropic-ai/vertex-sdk": "^0.14.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
+  }
+}
