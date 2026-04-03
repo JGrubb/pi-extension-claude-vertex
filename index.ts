@@ -453,6 +453,10 @@ function streamClaudeVertex(
 export default function (pi: ExtensionAPI) {
   pi.registerProvider("claude-vertex", {
     api: "claude-vertex-api",
+    // baseUrl and apiKey are required by pi's provider validation but unused —
+    // all API calls go through the Vertex SDK via streamSimple.
+    baseUrl: "https://unused.example.com",
+    apiKey: "unused",
     models: [
       {
         id: "claude-opus-4-6@default",
