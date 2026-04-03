@@ -81,6 +81,20 @@ function convertMessages(messages: Message[], tools?: Tool[]): any[] {
   for (let i = 0; i < messages.length; i++) {
     const msg = messages[i];
 
+    // Skip aborted assistant messages: if this assistant message contains toolCall
+    // blocks but the next message(s) are not toolResult, the tool_use blocks have
+    // no matching tool_result and Vertex will return a 400. Drop the whole message.
+    if (msg.role === "assistant") {
+      const hasToolCalls = (msg.content as any[]).some((b: any) => b.type === "toolCall");
+      if (hasToolCalls) {
+        const next = messages[i + 1];
+        if (!next || next.role !== "toolResult") {
+          // Orphaned tool_use blocks — skip this message entirely
+          continue;
+        }
+      }
+    }
+
     if (msg.role === "user") {
       if (typeof msg.content === "string") {
         if (msg.content.trim()) {
