@@ -16,6 +16,7 @@
  *   4. Run pi — select models under the "claude-vertex" provider
  */
 
+import { execSync } from "node:child_process";
 import AnthropicVertex from "@anthropic-ai/vertex-sdk";
 import type { ContentBlockParam, MessageCreateParamsStreaming } from "@anthropic-ai/sdk/resources/messages.js";
 import {
@@ -221,6 +222,24 @@ function mapStopReason(reason: string): StopReason {
     default:
       return "error";
   }
+}
+
+// =============================================================================
+// ADC Re-authentication Helper
+// =============================================================================
+
+function isReauthError(error: any): boolean {
+  const msg = error?.message || error?.error_description || JSON.stringify(error);
+  return msg.includes("Reauthentication") || msg.includes("invalid_rapt") || msg.includes("invalid_grant");
+}
+
+function refreshADC(): void {
+  console.log("[claude-vertex] ADC expired — launching gcloud auth application-default login...");
+  execSync("gcloud auth application-default login --quiet", {
+    encoding: "utf-8",
+    timeout: 120_000,
+    stdio: "inherit",
+  });
 }
 
 // =============================================================================
@@ -448,7 +467,24 @@ function streamClaudeVertex(
 
       stream.push({ type: "done", reason: output.stopReason as "stop" | "length" | "toolUse", message: output });
       stream.end();
-    } catch (error) {
+    } catch (error: any) {
+      // If this is a reauth error, try refreshing ADC and ask user to retry
+      if (isReauthError(error)) {
+        try {
+          refreshADC();
+          output.stopReason = "error";
+          output.errorMessage = `[claude-vertex] Credentials refreshed. Please retry your last message.`;
+          stream.push({ type: "error", reason: output.stopReason, error: output });
+          stream.end();
+          return;
+        } catch {
+          output.stopReason = "error";
+          output.errorMessage = `Automatic re-authentication failed. Please run manually:\n  gcloud auth application-default login`;
+          stream.push({ type: "error", reason: output.stopReason, error: output });
+          stream.end();
+          return;
+        }
+      }
       for (const block of output.content) delete (block as any).index;
       output.stopReason = options?.signal?.aborted ? "aborted" : "error";
       output.errorMessage = `[Project: ${projectId || "unknown"}, Region: ${region || "unknown"}] ${error instanceof Error ? error.message : JSON.stringify(error)}`;
