@@ -514,7 +514,7 @@ export default function (pi: ExtensionAPI) {
         reasoning: true,
         input: ["text", "image"],
         cost: { input: 15, output: 75, cacheRead: 1.5, cacheWrite: 18.75 },
-        contextWindow: 200000,
+        contextWindow: 1000000,
         maxTokens: 64000,
       },
       {
@@ -523,7 +523,7 @@ export default function (pi: ExtensionAPI) {
         reasoning: true,
         input: ["text", "image"],
         cost: { input: 3, output: 15, cacheRead: 0.3, cacheWrite: 3.75 },
-        contextWindow: 200000,
+        contextWindow: 1000000,
         maxTokens: 64000,
       },
       {
@@ -532,7 +532,7 @@ export default function (pi: ExtensionAPI) {
         reasoning: true,
         input: ["text", "image"],
         cost: { input: 0.8, output: 4, cacheRead: 0.08, cacheWrite: 1 },
-        contextWindow: 200000,
+        contextWindow: 1000000,
         maxTokens: 8192,
       },
     ],
