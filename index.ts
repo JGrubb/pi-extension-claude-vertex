@@ -322,25 +322,43 @@ function streamClaudeVertex(
 
       // Extended thinking / reasoning
       if (options?.reasoning && model.reasoning) {
-        const defaultBudgets: Record<string, number> = {
-          minimal: 1024,
-          low: 4096,
-          medium: 10240,
-          high: 20480,
-          xhigh: 32768,
-        };
-        const customBudget =
-          options.thinkingBudgets?.[options.reasoning as keyof typeof options.thinkingBudgets];
-        const budget = customBudget ?? defaultBudgets[options.reasoning] ?? 10240;
-        
-        (params as any).thinking = {
-          type: "enabled",
-          budget_tokens: budget,
-        };
-        
-        // max_tokens MUST be greater than thinking.budget_tokens
-        if (!params.max_tokens || params.max_tokens <= budget) {
-          params.max_tokens = budget + 4096; // Give 4k tokens buffer for actual text output
+        // claude-opus-4-7+ uses adaptive thinking with output_config.effort
+        // older models use enabled thinking with budget_tokens
+        // Detect by model ID since custom properties are stripped by pi's model registry
+        const usesAdaptiveThinking = /opus-4[-.]?7/i.test(model.id);
+
+        if (usesAdaptiveThinking) {
+          const effortMap: Record<string, string> = {
+            minimal: "low",
+            low: "low",
+            medium: "medium",
+            high: "high",
+            xhigh: "high",
+          };
+          const effort = effortMap[options.reasoning] ?? "medium";
+          (params as any).thinking = { type: "adaptive" };
+          (params as any).output_config = { effort };
+        } else {
+          const defaultBudgets: Record<string, number> = {
+            minimal: 1024,
+            low: 4096,
+            medium: 10240,
+            high: 20480,
+            xhigh: 32768,
+          };
+          const customBudget =
+            options.thinkingBudgets?.[options.reasoning as keyof typeof options.thinkingBudgets];
+          const budget = customBudget ?? defaultBudgets[options.reasoning] ?? 10240;
+
+          (params as any).thinking = {
+            type: "enabled",
+            budget_tokens: budget,
+          };
+
+          // max_tokens MUST be greater than thinking.budget_tokens
+          if (!params.max_tokens || params.max_tokens <= budget) {
+            params.max_tokens = budget + 4096; // Give 4k tokens buffer for actual text output
+          }
         }
       }
 
@@ -509,7 +527,16 @@ export default function (pi: ExtensionAPI) {
     apiKey: "unused",
     models: [
       {
-        id: "claude-opus-4-6@default",
+        id: "claude-opus-4-7",
+        name: "Claude Opus 4.7 (Vertex)",
+        reasoning: true,
+        input: ["text", "image"],
+        cost: { input: 15, output: 75, cacheRead: 1.5, cacheWrite: 18.75 },
+        contextWindow: 1000000,
+        maxTokens: 64000,
+      },
+      {
+        id: "claude-opus-4-6",
         name: "Claude Opus 4.6 (Vertex)",
         reasoning: true,
         input: ["text", "image"],
@@ -518,7 +545,7 @@ export default function (pi: ExtensionAPI) {
         maxTokens: 64000,
       },
       {
-        id: "claude-sonnet-4-6@default",
+        id: "claude-sonnet-4-6",
         name: "Claude Sonnet 4.6 (Vertex)",
         reasoning: true,
         input: ["text", "image"],
