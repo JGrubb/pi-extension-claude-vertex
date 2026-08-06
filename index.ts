@@ -246,6 +246,25 @@ function refreshADC(): void {
 // Streaming Implementation using AnthropicVertex client
 // =============================================================================
 
+// Models that only accept the legacy `thinking: {type: "enabled", budget_tokens}`
+// API. Everything else gets adaptive thinking plus output_config.effort, so a
+// model released after this list was written works rather than 400ing.
+const LEGACY_THINKING_MODELS = new Set([
+  "claude-opus-4-6",
+  "claude-opus-4-5",
+  "claude-opus-4-1",
+  "claude-opus-4-0",
+  "claude-sonnet-4-6",
+  "claude-sonnet-4-5",
+  "claude-sonnet-4-0",
+  "claude-haiku-4-5",
+]);
+
+/** Strip the `@date` snapshot suffix so `claude-haiku-4-5@20251001` matches. */
+function baseModelId(id: string): string {
+  return id.split("@")[0].toLowerCase();
+}
+
 function streamClaudeVertex(
   model: Model<Api>,
   context: Context,
@@ -322,10 +341,10 @@ function streamClaudeVertex(
 
       // Extended thinking / reasoning
       if (options?.reasoning && model.reasoning) {
-        // claude-opus-4-7+ uses adaptive thinking with output_config.effort
-        // older models use enabled thinking with budget_tokens
-        // Detect by model ID since custom properties are stripped by pi's model registry
-        const usesAdaptiveThinking = /opus-4[-.]?7/i.test(model.id);
+        // Adaptive thinking (output_config.effort) is the default; only the
+        // models listed above still take budget_tokens. Detect by model ID since
+        // custom properties are stripped by pi's model registry.
+        const usesAdaptiveThinking = !LEGACY_THINKING_MODELS.has(baseModelId(model.id));
 
         if (usesAdaptiveThinking) {
           const effortMap: Record<string, string> = {
@@ -333,7 +352,7 @@ function streamClaudeVertex(
             low: "low",
             medium: "medium",
             high: "high",
-            xhigh: "high",
+            xhigh: "xhigh",
           };
           const effort = effortMap[options.reasoning] ?? "medium";
           (params as any).thinking = { type: "adaptive" };
@@ -526,6 +545,33 @@ export default function (pi: ExtensionAPI) {
     baseUrl: "https://unused.example.com",
     apiKey: "unused",
     models: [
+      {
+        id: "claude-fable-5",
+        name: "Claude Fable 5 (Vertex)",
+        reasoning: true,
+        input: ["text", "image"],
+        cost: { input: 10, output: 50, cacheRead: 1, cacheWrite: 12.5 },
+        contextWindow: 1000000,
+        maxTokens: 128000,
+      },
+      {
+        id: "claude-opus-5",
+        name: "Claude Opus 5 (Vertex)",
+        reasoning: true,
+        input: ["text", "image"],
+        cost: { input: 5, output: 25, cacheRead: 0.5, cacheWrite: 6.25 },
+        contextWindow: 1000000,
+        maxTokens: 128000,
+      },
+      {
+        id: "claude-sonnet-5",
+        name: "Claude Sonnet 5 (Vertex)",
+        reasoning: true,
+        input: ["text", "image"],
+        cost: { input: 3, output: 15, cacheRead: 0.3, cacheWrite: 3.75 },
+        contextWindow: 1000000,
+        maxTokens: 128000,
+      },
       {
         id: "claude-opus-4-7",
         name: "Claude Opus 4.7 (Vertex)",
